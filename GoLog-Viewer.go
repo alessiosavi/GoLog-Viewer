@@ -223,7 +223,6 @@ func FastGetFileHTTP(ctx *fasthttp.RequestCtx, fileList []LogFileStruct) {
 	json.NewEncoder(ctx).Encode(status{Status: false, Description: file, ErrorCode: "File not found", Data: nil})
 	log.Warn("FastGetFileHTTP | File NOT Found -> ", file, " | Params -> ", string(ctx.QueryArgs().QueryString()))
 	log.Trace("FastGetFileHTTP | STOP")
-
 }
 
 // FastFilterFileHTTP is in charge to return the lines of log that contains some text in input and expose the result over HTTP.

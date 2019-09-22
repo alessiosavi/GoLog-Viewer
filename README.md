@@ -1,4 +1,3 @@
-
 # GoLogAnalyzer
 
 A Go webserver for expose log files over HTTP with a custom configuration.
@@ -9,11 +8,11 @@ This tool is developed for have few HTTP API interfaces in order to query the lo
 
 The tool is intended to:
 
-- Run only on Linux machine (*use of tail for filter last log lines files*);
-- Bind the necessary network resources only under "localhost" control;
-- Not expose data over not authorized network (no input validation);
-- Consume as much low memory as possible (data are compressed in memory using the Facebook's Zstandard)
-- Don't eat CPU (be inactive the most of the time)
+- Run only on Linux machine (*use of tail for filter last log lines files*);  
+- Bind the necessary network resources only under "localhost" control;  
+- Not expose data over not authorized network (no input validation);  
+- Consume as much low memory as possible (data are compressed in memory using the Facebook's Zstandard);  
+- Don't eat CPU (be inactive the most of the time);  
 
 During the development of the source code, I'll will try as much as i can to write modular function that can be replaced or swapped for other OS.
 
@@ -53,9 +52,9 @@ $ sudo yum install findutils
 
 In order to install golang in your machine, you have to run the following commands:
 
-- NOTE:
-  - It's preferable __*to don't run these command as root*__. Simply *`chown`* the *`root_foolder`* of golang to be compliant with your user and run the script.
-  - Run this "installer" script only once
+- NOTE:  
+  - It's preferable __*to don't run these command as root*__. Simply *`chown`* the *`root_foolder`* of golang to be compliant with your user and run the script;  
+  - Run this "installer" script only once;  
 
 ```bash
 golang_version="1.13"
@@ -96,7 +95,7 @@ After running these command, you have to be able to see the golang version insta
 
 __*NOTE*__:
 
-- *It's preferable to logout and login to the system for a fresh reload of the configuration after have installed all the packaged listed below.*
+- *It's preferable to logout and login to the system for a fresh reload of the configuration after have installed all the packaged listed below.*  
 
 ## Installing
 
@@ -124,10 +123,10 @@ Unfortunatly no test are provided with the initial versione of the software :/
 
 You can deploy the application in two methods:
 
-- Deploy the executable in your remote machine
-  - Build the source in your local machine
-  - Deploy the executable
-- Copy the code to you remote machine, run the following commands
+- Deploy the executable in your remote machine;  
+  - Build the source in your local machine;  
+  - Deploy the executable;  
+- Copy the code to you remote machine, run the following commands;  
 
 ```bash
 scp -r GoLog-Viewer.go user@machine.dev-prod_log:/home/no_sudo_user/gologviewer #Copy the code into your user folder
@@ -163,18 +162,17 @@ nohup ./$exe -path utils -port 8080 > logs/logs.txt & # Just run in background
 
 ## Built With
 
-- [FastHTTP](https://github.com/valyala/fasthttp) - HTTP Framework | Tuned for high performance. Zero memory allocations in hot paths. Up to 10x faster than net/http
-- [gozstd](https://github.com/valyala/gozstd) - Facebook's compress algorithm wrapper for golang | Very usefull for performance/compression ratio
-- [logrus](https://github.com/Sirupsen/logrus) - Pretty logging framework | Not the fastest but very cool and customizable
-  - [filename](https://github.com/onrik/logrus/filename) - Plugin for logrus | Used fo print the filename and the logline at each entries of the log
-- [redis](https://github.com/go-redis/redis) - Useful framework for talk with Redis DB
-- [mgo](https://github.com/globalsign/mgo) - The MongoDB driver for Go
+- [FastHTTP](https://github.com/valyala/fasthttp) - HTTP Framework | Tuned for high performance. Zero memory allocations in hot paths. Up to 10x faster than net/http  
+- [gozstd](https://github.com/valyala/gozstd) - Facebook's compress algorithm wrapper for golang | Very usefull for performance/compression ratio  
+- [logrus](https://github.com/Sirupsen/logrus) - Pretty logging framework | Not the fastest but very cool and customizable  
+  - [filename](https://github.com/onrik/logrus/filename) - Plugin for logrus | Used fo print the filename and the logline at each entries of the log  
+- [GoUtils](https://github.com/alessiosavi/GoUtils) - A set of Go methods for enhance productivity  
 
 ## Contributing
 
-- Feel free to open issue in order to __*require new functionality*__
-- Feel free to open issue __*if you discover a bug*__
-- New idea/request/concept are very appreciated!
+- Feel free to open issue in order to __*require new functionality*__;  
+- Feel free to open issue __*if you discover a bug*__;  
+- New idea/request/concept are very appreciated!;  
 
 ## Versioning
 
