@@ -1,0 +1,33 @@
+language: go
+
+go:
+  - "1.12"
+  - "1.13"
+
+os:
+  - linux
+  - osx
+
+sudo: false
+
+branches:
+  only:
+  - master
+
+install: true
+
+script:
+  - go get -v -u github.com/alessiosavi/GoLog-Viewer
+
+  - mkdir $GOPATH/src/gologviewer
+  - cp -r GoLog-Viewer.go $GOPATH/src/gologviewer/
+  - go build GoLog-Viewer.go
+  - mkdir /tmp/log_files
+  - echo "Take this!" > /tmp/log_files/test.txt
+  - strip -s GoLog-Viewer
+  - nohup ./GoLog-Viewer -path /tmp/log_files -port 8081 -host 127.0.0.1 &
+  - sleep 0.5
+  - curl -s -v 127.0.0.1:8081/listAllFile
+  - curl -s -v 127.0.0.1:8081/getFile?file=test.txt
+  - sleep 0.5 ; pkill GoLog-Viewer
+  - cat nohup.out
