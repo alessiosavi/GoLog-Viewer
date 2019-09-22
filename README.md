@@ -29,7 +29,7 @@ $ sudo apt install findutils
 
 ### CentOS
 
-#### Compile from source
+### Compile from source
 
 ```bash
 mkdir -p /opt/SP/packages
@@ -42,7 +42,7 @@ make
 make install
 ```
 
-#### Install from yum
+### Install from yum
 
 ```bash
 $ sudo yum install findutils
@@ -95,7 +95,7 @@ go version
 
 After running these command, you have to be able to see the golang version installed.
 
-#### Post Prerequisites
+### Post Prerequisites
 
 __*NOTE*__:
 
@@ -121,14 +121,14 @@ In case of problem, you have to download it manually
 
 ## Documentation
 
-#### HELP
+### HELP
 
 For print the simple documentation
 
-- Without compile: `go run GoLog-Viewer.go --help`
-- Compiling: `go build; ./GoLog-Viewer --help`
+- Without compile: `go run GoLog-Viewer.go --help`  
+- Compiling: `go build; ./GoLog-Viewer --help`  
 
-```
+```text
 -gcSleep int
         Number of minutes to sleep beetween every forced GC cycle (default 10)
   -host string
@@ -214,7 +214,7 @@ We use [SemVer](http://semver.org/) for versioning.
 
 ## Authors
 
-- **Alessio Savi** - *Initial work & Concept* - [IBM Client Innovation Center [CIC]](https://github.ibm.com/Alessio-Savi)
+- **Alessio Savi** - *Initial work & Concept* - [IBM Client Innovation Center [CIC]](https://github.ibm.com/Alessio-Savi)  
 
 ## License
 
