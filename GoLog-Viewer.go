@@ -146,7 +146,11 @@ func HandleRequests(fileList *[]LogFileStruct, logCfg *Configuration, channel *b
 		for i := 0; i < 10; i++ {
 			port := strconv.Itoa(utils.Random(8081, 8090)) // Generate a new port to use
 			log.Info("Round ", strconv.Itoa(i), "]No luck! Connecting to anotother random port [@", port, "] ...")
-			*logCfg.Port, _ = strconv.Atoi(port)                                   // Updating the configuration with the new port used
+			*logCfg.Port, err = strconv.Atoi(port) // Updating the configuration with the new port used
+			if err != nil {
+				log.Error("HandleRequests | Unable to parse int [", logCfg.Port, "] | Err: ", err)
+				return
+			}
 			err := fasthttp.ListenAndServe(*logCfg.Hostname+":"+port, gzipHandler) // Trying with the random port generate few step above
 			if err == nil {                                                        // Connection estabileshed!
 				log.Info("HandleRequests | Connection estabilished @[", *logCfg.Hostname, ":", *logCfg.Port) // Not reached
@@ -197,13 +201,21 @@ func FastGetFileHTTP(ctx *fasthttp.RequestCtx, fileList []LogFileStruct) {
 	if strings.Compare(file, "") == 0 {
 		ctx.Response.Header.SetContentType("application/json; charset=utf-8")
 		json.NewEncoder(ctx).Encode(status{Status: false, Description: "Example: /getFile?file=file_name", ErrorCode: "Parameter not found: file", Data: nil})
-		log.Info("FastGetFileHTTP without file paramater!")
+		log.Error("FastGetFileHTTP without file paramater!")
 		log.Trace("FastGetFileHTTP | STOP")
 		return
 	}
 	for i := 0; i < len(fileList); i++ { // Try to find the file ...
 		if strings.Compare(fileList[i].LogFileInfoStruct.Path, file) == 0 { // File found !
-			dataUncompressed, _ := gozstd.Decompress(nil, fileList[i].Data) // Decompress the data
+			dataUncompressed, err := gozstd.Decompress(nil, fileList[i].Data) // Decompress the data
+			if err != nil {
+				ctx.Response.Header.SetContentType("application/json; charset=utf-8")
+				json.NewEncoder(ctx).Encode(status{Status: false, Description: "Unable to decompress file " + file, ErrorCode: "UNABLE_DECOMPRESS", Data: nil})
+				log.Error("FastGetFileHTTP unable to decompress file " + file)
+				log.Trace("FastGetFileHTTP | STOP")
+				return
+
+			}
 			strJSON := strings.ToLower(string(ctx.FormValue("json")))
 			if strings.Compare(strJSON, "on") == 0 || strings.Compare(strJSON, "true") == 0 { // Checking if the json is on
 				log.Debug("FastGetFileHTTP | Setting json headers and writing the response")
