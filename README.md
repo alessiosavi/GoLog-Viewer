@@ -48,7 +48,7 @@ make install
 $ sudo yum install findutils
 ```
 
-### 1) Install Golang
+## Install Golang
 
 In order to install golang in your machine, you have to run the following commands:
 
@@ -63,12 +63,13 @@ root_foolder="/opt/GOLANG" # Set the tree variable needed for build the enviroin
 go_source="$root_foolder/go"
 go_projects="$root_foolder/go_projects"
 
-
+# Check if this script was alredy run
 if [ -d "$root_foolder" ] || [ -d "$go_source" ] || [ -d "$go_projects" ]; then
   ### Take action if $DIR exists ###
   echo "Golang is alredy installed!"
   exit 1
 fi
+# Be sure that golang is not alredy installed
 command -v go >/dev/null 2>&1 && { echo >&2 "Seems that go is alredy installed in $(which go)"; exit 2 }
 
 mkdir -p $root_foolder # creating dir for golang source code
@@ -77,6 +78,7 @@ wget $golang_link #downloading golang
 tar xf $(ls | grep "tar") # extract only the tar file
 mkdir $go_projects
 
+# Add Go to the current user path
 echo '
 export GOPATH="$go_projects"
 export GOBIN="$GOPATH/bin"
@@ -84,8 +86,10 @@ export GOROOT="$go_source"
 export PATH="$PATH:$GOROOT/bin:$GOBIN"
 ' >> /home/$(whoami)/.bashrc
 
+# Load the fresh changed .bashrc env file
 source /home/$(whoami)/.bashrc
 
+# Print the golang version
 go version
 ```
 
@@ -114,6 +118,36 @@ In case of problem, you have to download it manually
   go clean
   go build
 ```
+
+## Documentation
+
+#### HELP
+
+For print the simple documentation
+
+- Without compile: `go run GoLog-Viewer.go --help`
+- Compiling: `go build; ./GoLog-Viewer --help`
+
+```
+-gcSleep int
+        Number of minutes to sleep beetween every forced GC cycle (default 10)
+  -host string
+        Host to bind the service (default "localhost", "0.0.0.0" for don't restrict traffic to localhost)
+  -lines int
+        Number of (last) lines that have to be filtered from the log (default 2000)
+  -maxlines int
+        Max lines used while searching for the data (default 100000)
+  -path string
+        Log folder that we want to expose (MANDATORY PARAMETER)
+  -port int
+        Port to bind the service (default 80)
+  -sleep int
+        Seconds for wait before check a new time if logs have changed (default 5)
+```
+
+#### Example
+
+`go build; ./GoLog-Viewer --path /var/log --port 8081`
 
 ## Running the tests
 
