@@ -14,8 +14,9 @@ import (
 	"strings"
 	"time"
 
-	utils "github.com/alessiosavi/GoUtils"
+	fileutils "github.com/alessiosavi/GoGPUtils/files"
 
+	utils "github.com/alessiosavi/GoUtils"
 	"github.com/onrik/logrus/filename" // Used for print the name and the logline at each entries of the log file
 	log "github.com/sirupsen/logrus"   // Pretty log library, not the fastest (zerolog/zap)
 	"github.com/valyala/fasthttp"      // external package used for networking
@@ -59,7 +60,7 @@ type Configuration struct {
 /* ------------- INIT ------------- */
 func main() {
 	Formatter := new(log.TextFormatter) //#TODO: Formatter have to be inserted in `configuration` in order to dinamically change debug level [at runtime?]
-	Formatter.TimestampFormat = "15-01-2018 15:04:05.000000"
+	// Formatter.TimestampFormat = "15-01-2018 15:04:05.000000"
 	Formatter.FullTimestamp = true
 	Formatter.ForceColors = true
 	log.AddHook(filename.NewHook()) // Print filename + line at every log
@@ -82,7 +83,8 @@ func main() {
 // The configuration of the tool can change at runtime using the API.A boolean channel it's used for be sure to read the data accordly to the latest configuration.
 func CoreEngine(fileList []LogFileStruct, logCfg *Configuration, channel *bool) {
 	log.Trace("CoreEngine | START")
-	for round := 0; round > -1; {
+	round := 0
+	for {
 		for i := 0; i < len(fileList); i++ { // Iterating the list of file for detecting changes ...
 			timestamp := utils.GetFileModification(fileList[i].LogFileInfoStruct.Path)               // Get the the last modification of the file
 			if fileList[i].LogFileInfoStruct.Timestamp != timestamp && timestamp != -1 && *channel { // If the lines have changed, update the data
@@ -401,12 +403,26 @@ func VerifyCommandLineInput() (string, int, int, int, string, int, int) {
 // InitLogFileData Init the log file. It runs only once for load the data and instantiate the array of logfile
 func InitLogFileData(logCfg *Configuration) []LogFileStruct {
 	log.Trace("InitLogFileData | START")
-	var filesList []string                       // Save the list of file name
-	var logList []LogFileStruct                  // Structure that have to be returned
-	filesList = utils.ReadFilePath(*logCfg.Path) // Get the list of the file in the directory
-	if filesList == nil {
-		log.Fatal("Impossibile to access into -> ", logCfg.Path) // Bye bye
+	var filesList []string      // Save the list of file name
+	var logList []LogFileStruct // Structure that have to be returned
+	// rawFilesList := utils.ReadFilePath(*logCfg.Path) // Get the list of the file in the directory
+	rawFilesList := fileutils.ListFile(*logCfg.Path) // Get the list of the file in the directory
+	if len(rawFilesList) == 0 {
+		log.Fatal("Impossibile to access into -> ", *logCfg.Path) // Bye bye
 		return nil
+	}
+
+	for _, item := range rawFilesList {
+		fileType, err := fileutils.GetFileContentType(item)
+		if err != nil {
+			log.Println("Error for file [" + item + "]")
+		} else {
+			if strings.HasPrefix(fileType, "text/plain") {
+				filesList = append(filesList, item)
+			} else {
+				log.Println("File type for file [" + item + "] -> " + fileType)
+			}
+		}
 	}
 	log.Info("List of file in logpath -> ", filesList, " | Number of files -> ", len(filesList))
 	logList = make([]LogFileStruct, len(filesList)) // Allocate an array of LogFileStruct
