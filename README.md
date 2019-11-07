@@ -28,7 +28,7 @@ The software is coded in Go, and use GNU tail for extract the latest lines from 
 ### Ubuntu
 
 ```bash
-$ sudo apt install findutils
+sudo apt install findutils
 ```
 
 ### CentOS
@@ -49,7 +49,7 @@ make install
 #### Install from yum
 
 ```bash
-$ sudo yum install findutils
+sudo yum install findutils
 ```
 
 ## Install Golang

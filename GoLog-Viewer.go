@@ -1,4 +1,4 @@
-// GoLog Viewer.
+// GoLog Viewer
 //
 // A simple Golang tool for expose log file over HTTP.
 
@@ -34,7 +34,7 @@ func main() {
 	)
 
 	Formatter := new(log.TextFormatter)
-	// Formatter.TimestampFormat = "15-01-2018 15:04:05.000000"
+	Formatter.TimestampFormat = "Jan _2 15:04:05.000000000"
 	Formatter.FullTimestamp = true
 	Formatter.ForceColors = true
 	log.AddHook(filename.NewHook()) // Print filename + line at every log
