@@ -29,7 +29,7 @@ $ sudo apt install findutils
 
 ### CentOS
 
-### Compile from source
+#### Compile from source
 
 ```bash
 mkdir -p /opt/SP/packages
@@ -42,7 +42,7 @@ make
 make install
 ```
 
-### Install from yum
+#### Install from yum
 
 ```bash
 $ sudo yum install findutils
@@ -99,7 +99,7 @@ After running these command, you have to be able to see the golang version insta
 
 __*NOTE*__:
 
-- *It's preferable to logout and login to the system for a fresh reload of the configuration after have installed all the packaged listed below.*  
+- *It's preferable to logout and login to the system for a fresh reload of the configuration after have installed all the packaged listed above.*  
 
 ## Installing
 
