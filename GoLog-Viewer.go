@@ -29,9 +29,9 @@ import (
 /* ------------- INIT ------------- */
 func main() {
 	var (
-		channel        bool                          = true // Used for "thread safety" during "hot change" of datastructure.Configuration
-		logCfg         datastructure.Configuration          // The data structure for save the datastructure.Configuration
-		fileListStruct []datastructure.LogFileStruct        // The data structure for save every the files log information
+		channel        bool                          // Used for "thread safety" during "hot change" of datastructure.Configuration
+		logCfg         datastructure.Configuration   // The data structure for save the datastructure.Configuration
+		fileListStruct []datastructure.LogFileStruct // The data structure for save every the files log information
 	)
 
 	Formatter := new(log.TextFormatter)
@@ -42,8 +42,9 @@ func main() {
 	log.SetFormatter(Formatter)
 	log.SetLevel(log.DebugLevel)
 
-	logCfg = InitConfigurationData()                  // Init the datastructure.Configuration
-	fileListStruct = InitLogFileData(&logCfg)         // Initialize the data
+	logCfg = InitConfigurationData()          // Init the datastructure.Configuration
+	fileListStruct = InitLogFileData(&logCfg) // Initialize the data
+	channel = true
 	go CoreEngine(fileListStruct, &logCfg, &channel)  // Run the core engine as a background task
 	HandleRequests(fileListStruct, &logCfg, &channel) // Spawn the HTTP service for serve the request
 }
@@ -195,9 +196,7 @@ func FastGetFileHTTP(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFileS
 	}
 	for i := 0; i < len(fileList); i++ { // Try to find the file ...
 		if strings.Compare(fileList[i].LogFileInfoStruct.Path, file) == 0 { // File found !
-			log.Println("Data compressed size -> ", len(fileList[i].Data))
 			dataUncompressed, err := gozstd.Decompress(nil, fileList[i].Data) // Decompress the data
-			log.Println("Data decompressed size -> ", len(dataUncompressed))
 			if err != nil {
 				ctx.Response.Header.SetContentType("application/json; charset=utf-8")
 				err := json.NewEncoder(ctx).Encode(datastructure.Status{Status: false, Description: "Unable to decompress file " + file, ErrorCode: "UNABLE_DECOMPRESS", Data: nil})
@@ -339,7 +338,7 @@ func fastBenchmarkHTTP(ctx *fasthttp.RequestCtx) {
 
 /* ------------- datastructure.Configuration METHOD ------------- */
 
-// Initdatastructure.ConfigurationData is in charge to init the various datastructure.Configuration data.
+// InitConfigurationData is in charge to init the various datastructure.Configuration data.
 // It runs only once for load the data and instantiate datastructure.Configuration options.
 func InitConfigurationData() datastructure.Configuration {
 	log.Trace("Initdatastructure.ConfigurationData | START")
@@ -426,7 +425,7 @@ func InitLogFileData(logCfg *datastructure.Configuration) []datastructure.LogFil
 			if strings.HasPrefix(fileType, "text/plain") {
 				filesList = append(filesList, item)
 			} else {
-				log.Println("File type for file [" + item + "] -> " + fileType)
+				log.Warning("File type for file [" + item + "] -> " + fileType)
 			}
 		}
 	}
