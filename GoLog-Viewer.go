@@ -28,9 +28,12 @@ import (
 
 /* ------------- INIT ------------- */
 func main() {
-	var channel bool = true                          // Used for "thread safety" during "hot change" of datastructure.Configuration
-	var logCfg datastructure.Configuration           // The data structure for save the datastructure.Configuration
-	var fileListStruct []datastructure.LogFileStruct // The data structure for save every the files log information
+	var (
+		channel        bool                          = true // Used for "thread safety" during "hot change" of datastructure.Configuration
+		logCfg         datastructure.Configuration          // The data structure for save the datastructure.Configuration
+		fileListStruct []datastructure.LogFileStruct        // The data structure for save every the files log information
+	)
+
 	Formatter := new(log.TextFormatter)
 	// Formatter.TimestampFormat = "15-01-2018 15:04:05.000000"
 	Formatter.FullTimestamp = true
@@ -76,6 +79,12 @@ func CoreEngine(fileList []datastructure.LogFileStruct, logCfg *datastructure.Co
 	}
 }
 
+func check(err error) {
+	if err != nil {
+		log.Warning("ERR: {" + err.Error() + "}")
+	}
+}
+
 /* ------------- API METHOD ------------- */
 
 // HandleRequests is the hook the real function/wrapper for expose the API. It's main scope it's to map the url to the function that have to do the work.
@@ -108,7 +117,8 @@ func HandleRequests(fileList []datastructure.LogFileStruct, logCfg *datastructur
 			FastGetLinePrintedHTTP(ctx, logCfg) // Simply print the active datastructure.Configuration parameter
 			log.Info(tmpChar)
 		default:
-			ctx.WriteString("The url " + string(ctx.URI().RequestURI()) + " does not exist :(\n")
+			_, err := ctx.WriteString("The url " + string(ctx.URI().RequestURI()) + " does not exist :(\n")
+			check(err)
 			FastHomePage(ctx, fileList, *logCfg.Hostname, strconv.Itoa(*logCfg.Port)) // Simply print some link
 			log.Info(tmpChar)
 		}
@@ -129,7 +139,7 @@ func HandleRequests(fileList []datastructure.LogFileStruct, logCfg *datastructur
 			}
 			err := fasthttp.ListenAndServe(*logCfg.Hostname+":"+port, gzipHandler) // Trying with the random port generate few step above
 			if err == nil {                                                        // Connection estabileshed!
-				log.Info("HandleRequests | Connection estabilished @[", *logCfg.Hostname, ":", *logCfg.Port) // Not reached
+				log.Warning("HandleRequests | Connection estabilished @[", *logCfg.Hostname, ":", *logCfg.Port) // Not reached
 				break
 			}
 		}
@@ -141,19 +151,20 @@ func HandleRequests(fileList []datastructure.LogFileStruct, logCfg *datastructur
 func FastHomePage(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFileStruct, hostname, port string) {
 	log.Trace("FastHomePage | START")
 	ctx.Response.Header.SetContentType("text/plain; charset=utf-8")
-	ctx.WriteString("Welcome to the GoLog Viewer!\n" + "API List!\n" +
+	_, err := ctx.WriteString("Welcome to the GoLog Viewer!\n" + "API List!\n" +
 		"http://" + hostname + ":" + port + "/listAllFile -> Return all file managed in a json format\n" +
 		"http://" + hostname + ":" + port + "/getFile?file=file_name&json=on -> Return the file log lines (optional: json)\n" +
 		"http://" + hostname + ":" + port + "/filterFromFile?file=file_name&filter=toFilter&reverse=on&json=on -> Filter text from the given file (optional: reverse, json)\n" +
 		"http://" + hostname + ":" + port + "/changeLine?line=100&json=on -> Change the number of line printed to 100 (optional: json) \n" +
 		"http://" + hostname + ":" + port + "/getLinePrinted?json=on -> Return the number of line printed for every log (optional: json)\n")
-
+	check(err)
 	var buffer bytes.Buffer // create a buffer for the string content
 
 	for i := 0; i < len(fileList); i++ {
 		buffer.WriteString("http://" + hostname + ":" + port + "/getFile?file=" + fileList[i].LogFileInfoStruct.Path + "\n") // append data to the buffer
 	}
-	ctx.Write(buffer.Bytes()) // Print the list of the file in the browser
+	_, err = ctx.Write(buffer.Bytes()) // Print the list of the file in the browser
+	check(err)
 	log.Trace("FastHomePage | STOP")
 }
 
@@ -165,7 +176,8 @@ func ListAllFilesHTTP(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFile
 	for i := 0; i < len(fileList); i++ {
 		tmpStruct[i] = fileList[i].LogFileInfoStruct
 	}
-	json.NewEncoder(ctx).Encode(datastructure.Status{Status: true, Description: "", ErrorCode: "", Data: tmpStruct})
+	err := json.NewEncoder(ctx).Encode(datastructure.Status{Status: true, Description: "", ErrorCode: "", Data: tmpStruct})
+	check(err)
 	log.Debug("ListAllFilesHTTP | Params -> ", string(ctx.QueryArgs().QueryString()), "\nlistAllFilesHTTP | STOP")
 }
 
@@ -175,7 +187,8 @@ func FastGetFileHTTP(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFileS
 	file := string(ctx.FormValue("file")) // Extracting the "file" INPUT parameter
 	if strings.Compare(file, "") == 0 {
 		ctx.Response.Header.SetContentType("application/json; charset=utf-8")
-		json.NewEncoder(ctx).Encode(datastructure.Status{Status: false, Description: "Example: /getFile?file=file_name", ErrorCode: "Parameter not found: file", Data: nil})
+		err := json.NewEncoder(ctx).Encode(datastructure.Status{Status: false, Description: "Example: /getFile?file=file_name", ErrorCode: "Parameter not found: file", Data: nil})
+		check(err)
 		log.Error("FastGetFileHTTP without file paramater!")
 		log.Trace("FastGetFileHTTP | STOP")
 		return
@@ -187,7 +200,8 @@ func FastGetFileHTTP(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFileS
 			log.Println("Data decompressed size -> ", len(dataUncompressed))
 			if err != nil {
 				ctx.Response.Header.SetContentType("application/json; charset=utf-8")
-				json.NewEncoder(ctx).Encode(datastructure.Status{Status: false, Description: "Unable to decompress file " + file, ErrorCode: "UNABLE_DECOMPRESS", Data: nil})
+				err := json.NewEncoder(ctx).Encode(datastructure.Status{Status: false, Description: "Unable to decompress file " + file, ErrorCode: "UNABLE_DECOMPRESS", Data: nil})
+				check(err)
 				log.Error("FastGetFileHTTP unable to decompress file " + file)
 				log.Trace("FastGetFileHTTP | STOP")
 				return
@@ -197,11 +211,13 @@ func FastGetFileHTTP(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFileS
 			if strings.Compare(strJSON, "on") == 0 || strings.Compare(strJSON, "true") == 0 { // Checking if the json is on
 				log.Debug("FastGetFileHTTP | Setting json headers and writing the response")
 				ctx.Response.Header.SetContentType("application/json; charset=utf-8")
-				json.NewEncoder(ctx).Encode(datastructure.Status{Status: true, Description: "", ErrorCode: "", Data: map[string]string{"Name": fileList[i].FileName, "Data": string(dataUncompressed), "Timestamp": strconv.FormatInt(fileList[i].LogFileInfoStruct.Timestamp, 10)}})
+				err := json.NewEncoder(ctx).Encode(datastructure.Status{Status: true, Description: "", ErrorCode: "", Data: map[string]string{"Name": fileList[i].FileName, "Data": string(dataUncompressed), "Timestamp": strconv.FormatInt(fileList[i].LogFileInfoStruct.Timestamp, 10)}})
+				check(err)
 			} else {
 				log.Debug("FastGetFileHTTP | Setting plain headers and writing the response")
 				ctx.Response.Header.SetContentType("text/plain; charset=utf-8")
-				ctx.Write(dataUncompressed)
+				_, err := ctx.Write(dataUncompressed)
+				check(err)
 			}
 			log.Info("FastGetFileHTTP | File Found -> ", file, " | Params -> ", ctx)
 			log.Trace("FastGetFileHTTP | STOP")
@@ -209,7 +225,8 @@ func FastGetFileHTTP(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFileS
 		}
 	}
 	ctx.Response.Header.SetContentType("application/json; charset=utf-8")
-	json.NewEncoder(ctx).Encode(datastructure.Status{Status: false, Description: file, ErrorCode: "File not found", Data: nil})
+	err := json.NewEncoder(ctx).Encode(datastructure.Status{Status: false, Description: file, ErrorCode: "File not found", Data: nil})
+	check(err)
 	log.Warn("FastGetFileHTTP | File NOT Found -> ", file, " | Params -> ", string(ctx.QueryArgs().QueryString()))
 	log.Trace("FastGetFileHTTP | STOP")
 }
@@ -223,7 +240,8 @@ func FastFilterFileHTTP(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFi
 	var reverse bool                                                        // Used for save the search criteria status
 	if strings.Compare(file, "") == 0 || strings.Compare(filter, "") == 0 { // The input parameters are not populated.
 		ctx.Response.Header.SetContentType("application/json; charset=utf-8")
-		json.NewEncoder(ctx).Encode(datastructure.Status{Status: false, Description: "/filterFromFile?file=file_name&filter=to_filter", ErrorCode: "Parameter not found: file,filter", Data: nil})
+		err := json.NewEncoder(ctx).Encode(datastructure.Status{Status: false, Description: "/filterFromFile?file=file_name&filter=to_filter", ErrorCode: "Parameter not found: file,filter", Data: nil})
+		check(err)
 		log.Warn("FastFilterFileHTTP | Empty file parameters | Params -> ", string(ctx.QueryArgs().QueryString()))
 		log.Trace("FastFilterFileHTTP | STOP !")
 		return
@@ -240,11 +258,13 @@ func FastFilterFileHTTP(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFi
 	if strings.Compare(strJSON, "on") == 0 || strings.Compare(strJSON, "true") == 0 {                                                     // Checking if the json is on
 		log.Trace("FastFilterFileHTTP | Setting json headers and writing the response")
 		ctx.Response.Header.SetContentType("application/json; charset=utf-8")
-		json.NewEncoder(ctx).Encode(datastructure.Status{Status: true, Description: "", ErrorCode: "", Data: string(dataUncompressed)})
+		err := json.NewEncoder(ctx).Encode(datastructure.Status{Status: true, Description: "", ErrorCode: "", Data: string(dataUncompressed)})
+		check(err)
 	} else {
 		log.Trace("FastFilterFileHTTP | Setting plain headers and writing the response")
 		ctx.Response.Header.SetContentType("text/plain; charset=utf-8")
-		ctx.Write(dataUncompressed)
+		_, err := ctx.Write(dataUncompressed)
+		check(err)
 	}
 	log.Info("FastFilterFileHTTP | Hit with -> ", filter, " | ", file, " | Params -> ", string(ctx.QueryArgs().QueryString()))
 	log.Trace("FastFilterFileHTTP | STOP")
@@ -255,7 +275,7 @@ func FastFilterFilteHTTPEngine(fileList []datastructure.LogFileStruct, maxLinesT
 	log.Trace("FastFilterFilteHTTPEngine | START")
 	for i := 0; i < len(fileList); i++ {
 		if strings.Compare(fileList[i].LogFileInfoStruct.Path, *file) == 0 { // Try to find the file
-			log.Debug("FastFilterFilteHTTPEngine | File found! | Filtering ", filter, " from ", fileList[i].LogFileInfoStruct.Path)
+			log.Debug("FastFilterFilteHTTPEngine | File found! | Filtering " + *filter + " from " + fileList[i].LogFileInfoStruct.Path)
 			return []byte(utils.FilterFromFile(fileList[i].LogFileInfoStruct.Path, maxLinesToSearch, *filter, reverse))
 		}
 	}
@@ -270,28 +290,32 @@ func FastChangeLineHTTP(ctx *fasthttp.RequestCtx, logCfg *datastructure.Configur
 	line := string(ctx.FormValue("line"))
 	if strings.Compare(line, "") == 0 {
 		log.Error("FastChangeLineHTTP | Request failed! Missing parameter! | Request -> ", ctx)
-		json.NewEncoder(ctx).Encode(datastructure.Status{Status: false, Description: "/changeLine?line=200", ErrorCode: "Parameter not found; line", Data: logCfg})
+		err := json.NewEncoder(ctx).Encode(datastructure.Status{Status: false, Description: "/changeLine?line=200", ErrorCode: "Parameter not found; line", Data: logCfg})
+		check(err)
 		log.Trace("FastChangeLineHTTP | STOP")
 		return
 	}
 	n, err := strconv.Atoi(line) // Convert INPUT string to int
 	if err != nil {
 		log.Error("FastChangeLineHTTP | Request failed! Int conversion failed :(!!", err)
-		json.NewEncoder(ctx).Encode(datastructure.Status{Status: false, Description: err.Error(), ErrorCode: "Int conversion failed", Data: logCfg})
+		err := json.NewEncoder(ctx).Encode(datastructure.Status{Status: false, Description: err.Error(), ErrorCode: "Int conversion failed", Data: logCfg})
+		check(err)
 		log.Trace("FastChangeLineHTTP | STOP")
 		return
 	}
 
 	if !*channel {
 		log.Error("FastChangeLineHTTP | Request failed! CoreEngine process is running !!")
-		json.NewEncoder(ctx).Encode(datastructure.Status{Status: false, Description: "Core engine running", ErrorCode: "Channel busy", Data: logCfg})
+		err := json.NewEncoder(ctx).Encode(datastructure.Status{Status: false, Description: "Core engine running", ErrorCode: "Channel busy", Data: logCfg})
+		check(err)
 		log.Trace("FastChangeLineHTTP | STOP")
 		return
 	}
 	*channel = false            // Closing the channel for change the datastructure.Configuration
 	*logCfg.MinLinesToPrint = n // Apply the datastructure.Configuration
 	*channel = true             // datastructure.Configuration applied! Reopening the channel
-	json.NewEncoder(ctx).Encode(datastructure.Status{Status: true, Description: "datastructure.Configuration changed to " + line, ErrorCode: "", Data: logCfg})
+	err = json.NewEncoder(ctx).Encode(datastructure.Status{Status: true, Description: "datastructure.Configuration changed to " + line, ErrorCode: "", Data: logCfg})
+	check(err)
 	log.Warn("FastChangeLineHTTP | Request succed -> Changing to " + strconv.Itoa(n))
 	log.Trace("FastChangeLineHTTP | STOP")
 }
@@ -300,13 +324,15 @@ func FastChangeLineHTTP(ctx *fasthttp.RequestCtx, logCfg *datastructure.Configur
 func FastGetLinePrintedHTTP(ctx *fasthttp.RequestCtx, logCfg *datastructure.Configuration) {
 	log.Trace("FastGetLinePrintedHTTP | START")
 	ctx.Response.Header.SetContentType("application/json; charset=utf-8")
-	json.NewEncoder(ctx).Encode(datastructure.Status{Status: true, Description: "", ErrorCode: "", Data: logCfg})
+	err := json.NewEncoder(ctx).Encode(datastructure.Status{Status: true, Description: "", ErrorCode: "", Data: logCfg})
+	check(err)
 	log.Trace("FastGetLinePrintedHTTP | STOP")
 }
 
 // FastGetLinePrintedHTTP return the number of line printed
 func fastBenchmarkHTTP(ctx *fasthttp.RequestCtx) {
-	ctx.Write([]byte("Retry !"))
+	_, err := ctx.Write([]byte("Retry !"))
+	check(err)
 }
 
 /* ------------- datastructure.Configuration METHOD ------------- */
@@ -315,13 +341,16 @@ func fastBenchmarkHTTP(ctx *fasthttp.RequestCtx) {
 // It runs only once for load the data and instantiate datastructure.Configuration options.
 func InitConfigurationData() datastructure.Configuration {
 	log.Trace("Initdatastructure.ConfigurationData | START")
-	var logPath string                                                                 // User INPUT folder
-	var numLines int                                                                   // Number of line to print
-	var maxLines int                                                                   // Max lines used for search the content
-	var port int                                                                       // Port to bind the service (random from 8080/8090 if used)
-	var host string                                                                    // Host to bind the service (127.0.0.1 as default)
-	var sleep int                                                                      // Seconds for wait until check the log another time
-	var gcSleep int                                                                    // Number of minutes to sleep beetween every forced GC cycle
+	var (
+		logPath  string // User INPUT folder
+		numLines int    // Number of line to print
+		maxLines int    // Max lines used for search the content
+		port     int    // Port to bind the service (random from 8080/8090 if used)
+		host     string // Host to bind the service (127.0.0.1 as default)
+		sleep    int    // Seconds for wait until check the log another time
+		gcSleep  int    // Number of minutes to sleep beetween every forced GC cycle
+	)
+
 	logPath, numLines, maxLines, port, host, sleep, gcSleep = VerifyCommandLineInput() // Function for validate command line INPUT
 	if strings.Compare(logPath[len(logPath)-1:], "/") != 0 {                           // Be sure that the last character is an '/'
 		logPath += "/" // Append the character needed by the directory if not present
@@ -383,14 +412,14 @@ func InitLogFileData(logCfg *datastructure.Configuration) []datastructure.LogFil
 	// rawFilesList := utils.ReadFilePath(*logCfg.Path) // Get the list of the file in the directory
 	rawFilesList := fileutils.ListFile(*logCfg.Path) // Get the list of the file in the directory
 	if len(rawFilesList) == 0 {
-		log.Fatal("Impossibile to access into -> ", *logCfg.Path) // Bye bye
+		log.Fatal("`Impossible` to access into -> ", *logCfg.Path) // Bye bye
 		return nil
 	}
 
 	for _, item := range rawFilesList {
 		fileType, err := fileutils.GetFileContentType(item)
 		if err != nil {
-			log.Println("Error for file [" + item + "]")
+			log.Warning("Error for file [" + item + "] -> Err: " + err.Error())
 		} else {
 			if strings.HasPrefix(fileType, "text/plain") {
 				filesList = append(filesList, item)
