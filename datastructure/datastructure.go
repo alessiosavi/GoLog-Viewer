@@ -9,13 +9,13 @@ type LogFileStruct struct {
 	LogFileInfoStruct LogFileInfoStruct `json:"LogFileInfoStruct"` // Path and timestamp of the logfile
 }
 
-// logFileInfoStruct Base structure for save the metadata inoìformation of the log file
+// LogFileInfoStruct Base structure for save the metadata inoìformation of the log file
 type LogFileInfoStruct struct {
 	Timestamp int64  `json:"Timestamp"` // Last modification time of the log file (user for check change)
 	Path      string `json:"Path"`      // Path of the log file (symbolic link welcome)
 }
 
-// status Structure used for populate the json response for the RESTfull HTTP API
+// Status Structure used for populate the json response for the RESTfull HTTP API
 type Status struct {
 	Status      bool        `json:"Status"`      // Status of response [true,false] OK, KO
 	ErrorCode   string      `json:"ErrorCode"`   // Code linked to the error (KO)
