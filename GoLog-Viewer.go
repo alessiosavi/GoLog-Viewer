@@ -10,9 +10,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
-	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	fileutils "github.com/alessiosavi/GoGPUtils/files"
@@ -433,15 +433,23 @@ func InitLogFileData(logCfg *datastructure.Configuration) []datastructure.LogFil
 	log.Info("List of file in logpath -> ", filesList, " | Number of files -> ", len(filesList))
 	filesLen := len(filesList)
 	logList = make([]datastructure.LogFileStruct, filesLen) // Allocate an array of LogFileStruct
-	for i := 0; i < filesLen; i++ {                         // Populate with the data
-
-		tmpname := strings.Split(filesList[i], "/")   // Tokenize the string by the /
-		logList[i].FileName = tmpname[len(tmpname)-1] // Extract only the Name of the file (latest element after "/")
-		fmt.Printf("\r %d/%d - %s", i, filesLen, logList[i].FileName)
-		logList[i].LogFileInfoStruct.Path = filesList[i]
-		logList[i].Data = utils.ReadFile(filesList[i], *logCfg.MinLinesToPrint)
-		logList[i].LogFileInfoStruct.Timestamp = fileutils.GetFileModification(filesList[i])
+	var wg sync.WaitGroup
+	semaphore := make(chan struct{}, 64)
+	wg.Add(filesLen)
+	for i := 0; i < filesLen; i++ { // Populate with the data
+		go func(i int) {
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+			defer wg.Done()
+			tmpname := strings.Split(filesList[i], "/")   // Tokenize the string by the /
+			logList[i].FileName = tmpname[len(tmpname)-1] // Extract only the Name of the file (latest element after "/")
+			logList[i].LogFileInfoStruct.Path = filesList[i]
+			logList[i].Data = utils.ReadFile(filesList[i], *logCfg.MinLinesToPrint)
+			logList[i].LogFileInfoStruct.Timestamp = fileutils.GetFileModification(filesList[i])
+		}(i)
+		//fmt.Printf("\r %d/%d - %s", i, filesLen, logList[i].FileName)
 	}
+	wg.Wait()
 	log.Debug("InitLogFileData | STOP")
 	return logList
 }
