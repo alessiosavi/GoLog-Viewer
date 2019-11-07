@@ -2,6 +2,11 @@
 
 A Go webserver for expose log files over HTTP with a custom configuration.
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/eed07b19bdcc4c658b7d2fc7110be0dc)](https://www.codacy.com/manual/alessiosavi/GoLog-Viewer?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=alessiosavi/GoLog-Viewer&amp;utm_campaign=Badge_Grade)
+[![Go Report Card](https://goreportcard.com/badge/github.com/alessiosavi/GoLog-Viewer)](https://goreportcard.com/report/github.com/alessiosavi/GoLog-Viewer) [![GoDoc](https://godoc.org/github.com/alessiosavi/GoLog-Viewer?status.svg)](https://godoc.org/github.com/alessiosavi/GoLog-Viewer) [![License](https://img.shields.io/github/license/alessiosavi/GoLog-Viewer)](https://img.shields.io/github/license/alessiosavi/GoLog-Viewer) [![Version](https://img.shields.io/github/v/tag/alessiosavi/GoLog-Viewer)](https://img.shields.io/github/v/tag/alessiosavi/GoLog-Viewer) [![Code size](https://img.shields.io/github/languages/code-size/alessiosavi/GoLog-Viewer)](https://img.shields.io/github/languages/code-size/alessiosavi/GoLog-Viewer) [![Repo size](https://img.shields.io/github/repo-size/alessiosavi/GoLog-Viewer)](https://img.shields.io/github/repo-size/alessiosavi/GoLog-Viewer) [![Issue open](https://img.shields.io/github/issues/alessiosavi/GoLog-Viewer)](https://img.shields.io/github/issues/alessiosavi/GoLog-Viewer)
+[![Issue closed](https://img.shields.io/github/issues-closed/alessiosavi/GoLog-Viewer)](https://img.shields.io/github/issues-closed/alessiosavi/GoLog-Viewer)
+
+
 ## Getting Started
 
 This tool is developed for have few HTTP API interfaces in order to query the log files, expose the content or filter particular information from them. This tool try to be (as best as i can) compliant with a REST implementation. Swap a front end application with another can be easy if have similar API.
