@@ -29,7 +29,6 @@ import (
 /* ------------- INIT ------------- */
 func main() {
 	var (
-		channel        bool                          // Used for "thread safety" during "hot change" of datastructure.Configuration
 		logCfg         datastructure.Configuration   // The data structure for save the datastructure.Configuration
 		fileListStruct []datastructure.LogFileStruct // The data structure for save every the files log information
 	)
@@ -44,9 +43,8 @@ func main() {
 
 	logCfg = InitConfigurationData()          // Init the datastructure.Configuration
 	fileListStruct = InitLogFileData(&logCfg) // Initialize the data
-	channel = true
-	go CoreEngine(fileListStruct, &logCfg, &channel)  // Run the core engine as a background task
-	HandleRequests(fileListStruct, &logCfg, &channel) // Spawn the HTTP service for serve the request
+	go CoreEngine(fileListStruct, &logCfg)    // Run the core engine as a background task
+	HandleRequests(fileListStruct, &logCfg)   // Spawn the HTTP service for serve the request
 }
 
 /* ------------- CORE METHOD ------------- */
@@ -54,26 +52,31 @@ func main() {
 // CoreEngine Main core function for recognize file change. It have to scan the list of file recognize if a file have changed.
 // In order to achieve an higher efficiency and be compliant with every SO this function is developed in pure GO.
 // The datastructure.Configuration of the tool can change at runtime using the API.A boolean channel it's used for be sure to read the data accordly to the latest datastructure.Configuration.
-func CoreEngine(fileList []datastructure.LogFileStruct, logCfg *datastructure.Configuration, channel *bool) {
+func CoreEngine(fileList []datastructure.LogFileStruct, logCfg *datastructure.Configuration) {
 	log.Trace("CoreEngine | START")
 	var round float64
-
 	lineToPrint := *logCfg.MinLinesToPrint
+	var wg sync.WaitGroup
+	semaphore := make(chan struct{}, 256)
 	for {
+		wg.Add(len(fileList))
 		for i := 0; i < len(fileList); i++ { // Iterating the list of file for detecting changes ...
-			timestamp := fileutils.GetFileModification(fileList[i].LogFileInfoStruct.Path)                                                       // Get the the last modification of the file
-			if (fileList[i].LogFileInfoStruct.Timestamp != timestamp && timestamp != -1 || lineToPrint != *logCfg.MinLinesToPrint) && *channel { // If the lines have changed, update the data
-				*channel = false // Close the channel for avoid change of datastructure.Configuration while reading the datastructure.Configuration
-				// data := fileutils.Tail(fileList[i].LogFileInfoStruct.Path, -1, 2, *logCfg.MinLinesToPrint)
-				// fileList[i].Data = gozstd.Compress(nil, []byte(data))
-				fileList[i].Data = utils.ReadFile(fileList[i].LogFileInfoStruct.Path, *logCfg.MinLinesToPrint)
-				fileList[i].LogFileInfoStruct.Timestamp = timestamp
-				*channel = true // Reopen the channel for be able to change the datastructure.Configuration
-				log.Debug("CoreEngine | Round ", round, " | File [", fileList[i].LogFileInfoStruct.Path, "] has changed!!"+
-					"[", fileList[i].LogFileInfoStruct.Path, "] Last modification ->", fileList[i].LogFileInfoStruct.Timestamp, " | timestamp -> ", timestamp)
-				round++ // Number of time that files have changed
-			}
+			go func(i int /* fileList []datastructure.LogFileStruct, logCfg *datastructure.Configuration*/) {
+				semaphore <- struct{}{}
+				defer func() { <-semaphore }()
+				defer wg.Done()
+				timestamp := fileutils.GetFileModification(fileList[i].LogFileInfoStruct.Path)                                         // Get the the last modification of the file
+				if fileList[i].LogFileInfoStruct.Timestamp != timestamp && timestamp != -1 || lineToPrint != *logCfg.MinLinesToPrint { // If the lines have changed, update the data
+					fileList[i].Data = utils.ReadFile(fileList[i].LogFileInfoStruct.Path, *logCfg.MinLinesToPrint)
+					fileList[i].LogFileInfoStruct.Timestamp = timestamp
+					log.Trace("CoreEngine | Round ", round, " | File [", fileList[i].LogFileInfoStruct.Path, "] has changed!!"+
+						"[", fileList[i].LogFileInfoStruct.Path, "] Last modification ->", fileList[i].LogFileInfoStruct.Timestamp, " | timestamp -> ", timestamp)
+					round++ // Number of time that files have changed
+				}
+
+			}(i)
 		}
+		wg.Wait()
 		lineToPrint = *logCfg.MinLinesToPrint
 		log.Trace("CoreEngine | Sleeping [", *logCfg.Sleep, "] ZzZzZzZ ....")
 		time.Sleep(time.Duration(*logCfg.Sleep) * time.Second)
@@ -90,7 +93,7 @@ func check(err error) {
 
 // HandleRequests is the hook the real function/wrapper for expose the API. It's main scope it's to map the url to the function that have to do the work.
 // It take in input the pointer to the list of file to server; The pointer to the datastructure.Configuration in order to change the parameter at runtime;the channel used for thread safety
-func HandleRequests(fileList []datastructure.LogFileStruct, logCfg *datastructure.Configuration, channel *bool) {
+func HandleRequests(fileList []datastructure.LogFileStruct, logCfg *datastructure.Configuration) {
 	log.Trace("HandleRequests | START")
 	m := func(ctx *fasthttp.RequestCtx) { // Hook to the API methods "magilogically"
 		ctx.Response.Header.Set("GoLog-Viewer", "v0.0.1$/beta") // Set an header just for track the version of the software
@@ -112,7 +115,7 @@ func HandleRequests(fileList []datastructure.LogFileStruct, logCfg *datastructur
 			FastFilterFileHTTP(ctx, fileList, logCfg) // Filter text from log file
 			log.Info(tmpChar)
 		case "/changeLine":
-			FastChangeLineHTTP(ctx, logCfg, channel) // Change the number of line printed
+			FastChangeLineHTTP(ctx, logCfg) // Change the number of line printed
 			log.Info(tmpChar)
 		case "/getLinePrinted":
 			FastGetLinePrintedHTTP(ctx, logCfg) // Simply print the active datastructure.Configuration parameter
@@ -128,7 +131,7 @@ func HandleRequests(fileList []datastructure.LogFileStruct, logCfg *datastructur
 	// The gzipHandler will serve a compress request only if the client request it with headers (Content-Type: gzip, deflate)
 	gzipHandler := fasthttp.CompressHandlerLevel(m, fasthttp.CompressBestCompression)            // Compress data before sending (if requested by the client)
 	err := fasthttp.ListenAndServe(*logCfg.Hostname+":"+strconv.Itoa(*logCfg.Port), gzipHandler) // Try to start the server with input "host:port" received in input
-	if err != nil {                                                                              // No luck, connection not succesfully. Probably port used ...
+	if err != nil {                                                                              // No luck, connection not successfully. Probably port used ...
 		log.Warn("Port ", *logCfg.Port, " seems used :/")
 		for i := 0; i < 10; i++ {
 			port := strconv.Itoa(utils.Random(8081, 8090)) // Generate a new port to use
@@ -204,7 +207,6 @@ func FastGetFileHTTP(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFileS
 				log.Error("FastGetFileHTTP unable to decompress file " + file)
 				log.Trace("FastGetFileHTTP | STOP")
 				return
-
 			}
 			strJSON := strings.ToLower(string(ctx.FormValue("json")))
 			if strings.Compare(strJSON, "on") == 0 || strings.Compare(strJSON, "true") == 0 { // Checking if the json is on
@@ -285,7 +287,7 @@ func FastFilterFilteHTTPEngine(fileList []datastructure.LogFileStruct, maxLinesT
 }
 
 // FastChangeLineHTTP API for change the line printed @runtime
-func FastChangeLineHTTP(ctx *fasthttp.RequestCtx, logCfg *datastructure.Configuration, channel *bool) {
+func FastChangeLineHTTP(ctx *fasthttp.RequestCtx, logCfg *datastructure.Configuration) {
 	log.Trace("FastChangeLineHTTP | START")
 	ctx.Response.Header.SetContentType("application/json; charset=utf-8")
 	line := string(ctx.FormValue("line"))
@@ -305,16 +307,7 @@ func FastChangeLineHTTP(ctx *fasthttp.RequestCtx, logCfg *datastructure.Configur
 		return
 	}
 
-	if !*channel {
-		log.Error("FastChangeLineHTTP | Request failed! CoreEngine process is running !!")
-		err := json.NewEncoder(ctx).Encode(datastructure.Status{Status: false, Description: "Core engine running", ErrorCode: "Channel busy", Data: logCfg})
-		check(err)
-		log.Trace("FastChangeLineHTTP | STOP")
-		return
-	}
-	*channel = false            // Closing the channel for change the datastructure.Configuration
 	*logCfg.MinLinesToPrint = n // Apply the datastructure.Configuration
-	*channel = true             // datastructure.Configuration applied! Reopening the channel
 	err = json.NewEncoder(ctx).Encode(datastructure.Status{Status: true, Description: "datastructure.Configuration changed to " + line, ErrorCode: "", Data: logCfg})
 	check(err)
 	log.Warn("FastChangeLineHTTP | Request succed -> Changing to " + strconv.Itoa(n))
@@ -375,7 +368,6 @@ func VerifyCommandLineInput() (string, int, int, int, string, int, int) {
 	if strings.Compare(*path, "") == 0 { // Verify that "path" (INPUT parameter) is populated
 		flag.PrintDefaults() // Exit status 2, bye bye Sir
 		log.Fatal("Start without -path parameter :/")
-
 	}
 	log.Trace("VerifyCommandLineInput | Starting command line input validation ..")
 	if utils.IsDir(*path) { // Be sure that the INPUT directory exist and parse the lines
