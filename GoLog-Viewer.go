@@ -253,17 +253,17 @@ func FastFilterFileHTTP(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFi
 		reverse = false
 	}
 
-	strJSON := strings.ToLower(string(ctx.FormValue("json")))                                                                             // Extracting the "json" INPUT parameter
-	dataUncompressed, _ := gozstd.Decompress(nil, FastFilterFilteHTTPEngine(fileList, *logCfg.MaxLinesToSearch, &file, &filter, reverse)) // Decompressing the data ...
-	if strings.Compare(strJSON, "on") == 0 || strings.Compare(strJSON, "true") == 0 {                                                     // Checking if the json is on
+	strJSON := strings.ToLower(string(ctx.FormValue("json"))) // Extracting the "json" INPUT parameter
+	filteredData := FastFilterFilteHTTPEngine(fileList, *logCfg.MaxLinesToSearch, &file, &filter, reverse)
+	if strings.Compare(strJSON, "on") == 0 || strings.Compare(strJSON, "true") == 0 { // Checking if the json is on
 		log.Trace("FastFilterFileHTTP | Setting json headers and writing the response")
 		ctx.Response.Header.SetContentType("application/json; charset=utf-8")
-		err := json.NewEncoder(ctx).Encode(datastructure.Status{Status: true, Description: "", ErrorCode: "", Data: string(dataUncompressed)})
+		err := json.NewEncoder(ctx).Encode(datastructure.Status{Status: true, Description: "", ErrorCode: "", Data: filteredData})
 		check(err)
 	} else {
 		log.Trace("FastFilterFileHTTP | Setting plain headers and writing the response")
 		ctx.Response.Header.SetContentType("text/plain; charset=utf-8")
-		_, err := ctx.Write(dataUncompressed)
+		_, err := ctx.WriteString(filteredData)
 		check(err)
 	}
 	log.Info("FastFilterFileHTTP | Hit with -> ", filter, " | ", file, " | Params -> ", string(ctx.QueryArgs().QueryString()))
@@ -271,16 +271,18 @@ func FastFilterFileHTTP(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFi
 }
 
 // FastFilterFilteHTTPEngine is a wrapper for the core logic method
-func FastFilterFilteHTTPEngine(fileList []datastructure.LogFileStruct, maxLinesToSearch int, file *string, filter *string, reverse bool) []byte {
+func FastFilterFilteHTTPEngine(fileList []datastructure.LogFileStruct, maxLinesToSearch int, file *string, filter *string, reverse bool) string {
 	log.Trace("FastFilterFilteHTTPEngine | START")
 	for i := 0; i < len(fileList); i++ {
 		if strings.Compare(fileList[i].LogFileInfoStruct.Path, *file) == 0 { // Try to find the file
 			log.Debug("FastFilterFilteHTTPEngine | File found! | Filtering " + *filter + " from " + fileList[i].LogFileInfoStruct.Path)
-			return []byte(utils.FilterFromFile(fileList[i].LogFileInfoStruct.Path, maxLinesToSearch, *filter, reverse))
+			filteredData := utils.FilterFromFile(fileList[i].LogFileInfoStruct.Path, maxLinesToSearch, *filter, reverse)
+			log.Debug("FastFilterFilteHTTPEngine | Filtered data -> " + filteredData)
+			return filteredData
 		}
 	}
 	log.Warn("FastFilterFilteHTTPEngine | File not found :/ | STOP")
-	return nil
+	return ""
 }
 
 // FastChangeLineHTTP API for change the line printed @runtime
