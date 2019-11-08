@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	arrayutils "github.com/alessiosavi/GoGPUtils/array"
 	fileutils "github.com/alessiosavi/GoGPUtils/files"
 	stringutils "github.com/alessiosavi/GoGPUtils/string"
 	"github.com/alessiosavi/GoLog-Viewer/datastructure"
@@ -37,14 +38,16 @@ func main() {
 	Formatter.TimestampFormat = "Jan _2 15:04:05.000000000"
 	Formatter.FullTimestamp = true
 	Formatter.ForceColors = true
+
 	log.AddHook(filename.NewHook()) // Print filename + line at every log
 	log.SetFormatter(Formatter)
 	log.SetLevel(log.DebugLevel)
 
 	logCfg = InitConfigurationData()          // Init the datastructure.Configuration
 	fileListStruct = InitLogFileData(&logCfg) // Initialize the data
-	go CoreEngine(fileListStruct, &logCfg)    // Run the core engine as a background task
-	HandleRequests(fileListStruct, &logCfg)   // Spawn the HTTP service for serve the request
+
+	go CoreEngine(fileListStruct, &logCfg)  // Run the core engine as a background task
+	HandleRequests(fileListStruct, &logCfg) // Spawn the HTTP service for serve the request
 }
 
 /* ------------- CORE METHOD ------------- */
@@ -73,7 +76,6 @@ func CoreEngine(fileList []datastructure.LogFileStruct, logCfg *datastructure.Co
 						"[", fileList[i].LogFileInfoStruct.Path, "] Last modification ->", fileList[i].LogFileInfoStruct.Timestamp, " | timestamp -> ", timestamp)
 					round++ // Number of time that files have changed
 				}
-
 			}(i)
 		}
 		wg.Wait()
@@ -158,7 +160,7 @@ func FastHomePage(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFileStru
 	_, err := ctx.WriteString("Welcome to the GoLog Viewer!\n" + "API List!\n" +
 		"http://" + hostname + ":" + port + "/listAllFile -> Return all file managed in a json format\n" +
 		"http://" + hostname + ":" + port + "/getFile?file=file_name&json=on -> Return the file log lines (optional: json)\n" +
-		"http://" + hostname + ":" + port + "/filterFromFile?file=file_name&filter=toFilter&reverse=on&json=on -> Filter text from the given file (optional: reverse, json)\n" +
+		"http://" + hostname + ":" + port + "/filterFromFile?file=file_name&filter=toFilter&reverse=on&json=on&ignoreCase=on -> Filter text from the given file (optional: reverse, json, ignoreCase)\n" +
 		"http://" + hostname + ":" + port + "/changeLine?line=100&json=on -> Change the number of line printed to 100 (optional: json) \n" +
 		"http://" + hostname + ":" + port + "/getLinePrinted?json=on -> Return the number of line printed for every log (optional: json)\n")
 	check(err)
@@ -236,9 +238,11 @@ func FastGetFileHTTP(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFileS
 // The purpouse of this method is to extract only the lines that contains "filter" from "file" (input parameter)
 func FastFilterFileHTTP(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFileStruct, logCfg *datastructure.Configuration) {
 	log.Trace("FastFilterFileHTTP | START")
-	file := string(ctx.FormValue("file"))                                   // Extracting the "file" INPUT parameter
-	filter := string(ctx.FormValue("filter"))                               // Extracting the "filter" INPUT parameter
-	var reverse bool                                                        // Used for save the search criteria status
+	file := string(ctx.FormValue("file"))              // Extracting the "file" INPUT parameter
+	filter := string(ctx.FormValue("filter"))          // Extracting the "filter" INPUT parameter
+	_ignoreCase := string(ctx.FormValue("ignoreCase")) // Extracting the "ignoreCase" INPUT parameter
+	var reverse bool                                   // Used for save the search criteria status
+	var ignoreCase bool
 	if strings.Compare(file, "") == 0 || strings.Compare(filter, "") == 0 { // The input parameters are not populated.
 		ctx.Response.Header.SetContentType("application/json; charset=utf-8")
 		err := json.NewEncoder(ctx).Encode(datastructure.Status{Status: false, Description: "/filterFromFile?file=file_name&filter=to_filter", ErrorCode: "Parameter not found: file,filter", Data: nil})
@@ -246,6 +250,11 @@ func FastFilterFileHTTP(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFi
 		log.Warn("FastFilterFileHTTP | Empty file parameters | Params -> ", string(ctx.QueryArgs().QueryString()))
 		log.Trace("FastFilterFileHTTP | STOP !")
 		return
+	}
+	if strings.Compare(_ignoreCase, "on") == 0 || strings.Compare(_ignoreCase, "true") == 0 {
+		ignoreCase = true
+	} else {
+		ignoreCase = false
 	}
 	tmpReverse := strings.ToLower(string(ctx.FormValue("reverse"))) // Check if the user want to search "everything except that"
 	if strings.Compare(tmpReverse, "on") == 0 || strings.Compare(tmpReverse, "true") == 0 {
@@ -255,7 +264,7 @@ func FastFilterFileHTTP(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFi
 	}
 
 	strJSON := strings.ToLower(string(ctx.FormValue("json"))) // Extracting the "json" INPUT parameter
-	filteredData := FastFilterFilteHTTPEngine(fileList, *logCfg.MaxLinesToSearch, &file, &filter, reverse)
+	filteredData := FastFilterFilteHTTPEngine(fileList, *logCfg.MaxLinesToSearch, &file, &filter, reverse, ignoreCase)
 	if strings.Compare(strJSON, "on") == 0 || strings.Compare(strJSON, "true") == 0 { // Checking if the json is on
 		log.Trace("FastFilterFileHTTP | Setting json headers and writing the response")
 		ctx.Response.Header.SetContentType("application/json; charset=utf-8")
@@ -272,14 +281,46 @@ func FastFilterFileHTTP(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFi
 }
 
 // FastFilterFilteHTTPEngine is a wrapper for the core logic method
-func FastFilterFilteHTTPEngine(fileList []datastructure.LogFileStruct, maxLinesToSearch int, file *string, filter *string, reverse bool) string {
+func FastFilterFilteHTTPEngine(fileList []datastructure.LogFileStruct, maxLinesToSearch int, file *string, filter *string, reverse, ignoreCase bool) string {
 	log.Trace("FastFilterFilteHTTPEngine | START")
 	for i := 0; i < len(fileList); i++ {
 		if strings.Compare(fileList[i].LogFileInfoStruct.Path, *file) == 0 { // Try to find the file
-			log.Debug("FastFilterFilteHTTPEngine | File found! | Filtering " + *filter + " from " + fileList[i].LogFileInfoStruct.Path)
-			filteredData := utils.FilterFromFile(fileList[i].LogFileInfoStruct.Path, maxLinesToSearch, *filter, reverse)
-			log.Debug("FastFilterFilteHTTPEngine | Filtered data -> " + filteredData)
-			return filteredData
+			_data, err := gozstd.Decompress(nil, fileList[i].Data) // Decompress the data
+			if err != nil {
+				log.Error("FastFilterFilteHTTPEngine | Unable to extract data ...")
+			} else {
+				if ignoreCase {
+					_data = bytes.ToLower(_data)
+				}
+				array := bytes.Split(_data, []byte("\n"))
+				var startPoint int
+				if len(array) >= maxLinesToSearch {
+					startPoint = len(array) - maxLinesToSearch
+				} else {
+					startPoint = 0
+				}
+				var filtered []string
+				log.Info("FastFilterFilteHTTPEngine | Starting from: ", i)
+				if !reverse {
+					for i := startPoint; i < len(array); i++ {
+						if bytes.Contains(array[i], []byte(*filter)) {
+							filtered = append(filtered, string(array[i]))
+						}
+					}
+				} else {
+					for i := startPoint; i < len(array); i++ {
+						if !bytes.Contains(array[i], []byte(*filter)) {
+							filtered = append(filtered, string(array[i]))
+						}
+					}
+				}
+				filteredData := arrayutils.JoinStrings(filtered, "\n")
+
+				// log.Debug("FastFilterFilteHTTPEngine | File found! | Filtering " + *filter + " from " + fileList[i].LogFileInfoStruct.Path)
+				// filteredData := utils.FilterFromFile(fileList[i].LogFileInfoStruct.Path, maxLinesToSearch, *filter, reverse)
+				// log.Debug("FastFilterFilteHTTPEngine | Filtered data -> " + filteredData)
+				return filteredData
+			}
 		}
 	}
 	log.Warn("FastFilterFilteHTTPEngine | File not found :/ | STOP")
@@ -426,8 +467,10 @@ func InitLogFileData(logCfg *datastructure.Configuration) []datastructure.LogFil
 	filesLen := len(filesList)
 	logList = make([]datastructure.LogFileStruct, filesLen) // Allocate an array of LogFileStruct
 	var wg sync.WaitGroup
-	semaphore := make(chan struct{}, 64)
+	// Use only 64 threads for avoid 'too many open files'
+	semaphore := make(chan struct{}, 128)
 	wg.Add(filesLen)
+
 	for i := 0; i < filesLen; i++ { // Populate with the data
 		go func(i int) {
 			semaphore <- struct{}{}
