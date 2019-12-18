@@ -264,6 +264,7 @@ func FastFilterFileHTTP(ctx *fasthttp.RequestCtx, fileList []datastructure.LogFi
 	}
 
 	strJSON := strings.ToLower(string(ctx.FormValue("json"))) // Extracting the "json" INPUT parameter
+
 	filteredData := FastFilterFilteHTTPEngine(fileList, *logCfg.MaxLinesToSearch, &file, &filter, reverse, ignoreCase)
 	if strings.Compare(strJSON, "on") == 0 || strings.Compare(strJSON, "true") == 0 { // Checking if the json is on
 		log.Trace("FastFilterFileHTTP | Setting json headers and writing the response")
@@ -321,6 +322,7 @@ func FastFilterFilteHTTPEngine(fileList []datastructure.LogFileStruct, maxLinesT
 				// log.Debug("FastFilterFilteHTTPEngine | Filtered data -> " + filteredData)
 				return filteredData
 			}
+
 		}
 	}
 	log.Warn("FastFilterFilteHTTPEngine | File not found :/ | STOP")
@@ -470,7 +472,6 @@ func InitLogFileData(logCfg *datastructure.Configuration) []datastructure.LogFil
 	// Use only 64 threads for avoid 'too many open files'
 	semaphore := make(chan struct{}, 128)
 	wg.Add(filesLen)
-
 	for i := 0; i < filesLen; i++ { // Populate with the data
 		go func(i int) {
 			semaphore <- struct{}{}
