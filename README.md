@@ -61,34 +61,43 @@ In order to install golang in your machine, you have to run the following comman
   - Run this "installer" script only once;  
 
 ```bash
-golang_version="1.13"
+#!/bin/bash
+golang_version="1.15.3"
 golang_link="https://dl.google.com/go/go$golang_version.linux-amd64.tar.gz"
-root_foolder="/opt/GOLANG" # Set the tree variable needed for build the enviroinment
-go_source="$root_foolder/go"
-go_projects="$root_foolder/go_projects"
+root_folder="/opt/GOLANG" # Set the tree variable needed for build the enviroinment
+go_source="$root_folder/go"
+go_projects="$root_folder/go_projects"
 
 # Check if this script was alredy run
-if [ -d "$root_foolder" ] || [ -d "$go_source" ] || [ -d "$go_projects" ]; then
-  ### Take action if $DIR exists ###
-  echo "Golang is alredy installed!"
-  exit 1
+if [ -d "$root_folder" ] || [ -d "$go_source" ] || [ -d "$go_projects" ]; then
+    ### Take action if $DIR exists ###
+    echo "Golang is alredy installed!"
+    exit 1
 fi
 # Be sure that golang is not alredy installed
-command -v go >/dev/null 2>&1 && { echo >&2 "Seems that go is alredy installed in $(which go)"; exit 2 }
+test_already_install=$(which go)
+if [ -z  $test_already_install ]
+then
+    echo "Going to install go ..."
+else
+    echo "Seems that go is alredy installed in $(which go)"
+    exit
+fi
 
-mkdir -p $root_foolder # creating dir for golang source code
-cd $root_foolder # entering dir
+sudo mkdir -p $root_folder # creating dir for golang source code
+sudo chown -R $(whoami) $root_folder
+cd $root_folder # entering dir
 wget $golang_link #downloading golang
 tar xf $(ls | grep "tar") # extract only the tar file
 mkdir $go_projects
 
-# Add Go to the current user path
-echo '
+
+cat <<EOF >>  /home/$(whoami)/.bashrc
 export GOPATH="$go_projects"
-export GOBIN="$GOPATH/bin"
+export GOBIN="$go_projects/bin"
 export GOROOT="$go_source"
 export PATH="$PATH:$GOROOT/bin:$GOBIN"
-' >> /home/$(whoami)/.bashrc
+EOF
 
 # Load the fresh changed .bashrc env file
 source /home/$(whoami)/.bashrc
