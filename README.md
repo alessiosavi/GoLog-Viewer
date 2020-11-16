@@ -62,7 +62,7 @@ In order to install golang in your machine, you have to run the following comman
 
 ```bash
 #!/bin/bash
-golang_version="1.15.3"
+golang_version="1.15.5"
 golang_link="https://dl.google.com/go/go$golang_version.linux-amd64.tar.gz"
 root_folder="/opt/GOLANG" # Set the tree variable needed for build the enviroinment
 go_source="$root_folder/go"
