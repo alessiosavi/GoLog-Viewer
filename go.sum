@@ -1,5 +1,7 @@
 github.com/alessiosavi/GoGPUtils v0.0.21-rc2 h1:H2RjlOSsHc4LrOsQjL9q7yuzG3l7FAPbqcrAECnTOak=
 github.com/alessiosavi/GoGPUtils v0.0.21-rc2/go.mod h1:DRI9kEkT/ZZdHr+ESFOMfqWPHsO9WgjzyVXdfOGN83M=
+github.com/alessiosavi/GoGPUtils v0.0.30 h1:+by+u5WlrjCvY3wdcn5aOGBJ2depT1iiNQwD6JlqZfY=
+github.com/alessiosavi/GoGPUtils v0.0.30/go.mod h1:DRI9kEkT/ZZdHr+ESFOMfqWPHsO9WgjzyVXdfOGN83M=
 github.com/alessiosavi/GoUtils v0.0.1 h1:JvQYQDiUErWYGSsbiAOJpBdi9maMXA6vGbjZVcDNrWE=
 github.com/alessiosavi/GoUtils v0.0.1/go.mod h1:1utS6Sb+yAcTdvKzH5ag74IYf/KrFz12L21BDdZ3nsw=
 github.com/alessiosavi/ahocorasick v0.0.3/go.mod h1:GlX7JXZTgFoEccsMg5JZVpjoe+NW7Nk+3b5ldtGP5oU=
