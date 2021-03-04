@@ -3,7 +3,7 @@ module github.com/alessiosavi/GoLog-Viewer
 go 1.13
 
 require (
-	github.com/alessiosavi/GoGPUtils v0.0.30
+	github.com/alessiosavi/GoGPUtils v0.0.39
 	github.com/alessiosavi/GoUtils v0.0.1
 	github.com/frankban/quicktest v1.5.0 // indirect
 	github.com/onrik/logrus v0.8.0
