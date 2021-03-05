@@ -7,7 +7,7 @@ require (
 	github.com/alessiosavi/GoUtils v0.0.1
 	github.com/frankban/quicktest v1.5.0 // indirect
 	github.com/onrik/logrus v0.8.0
-	github.com/sirupsen/logrus v1.7.0
+	github.com/sirupsen/logrus v1.8.0
 	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/valyala/fasthttp v1.18.0
 	github.com/valyala/gozstd v1.9.0
